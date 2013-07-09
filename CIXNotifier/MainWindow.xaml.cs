@@ -16,21 +16,17 @@ namespace CIXNotifier
     {
         readonly InboxMessages _messages = new InboxMessages();
         readonly NotifyIcon _notifyIcon = new NotifyIcon();
+        private readonly Timer _notifyTimer;
         int _lastCount = -1;
         private bool _isDisposed;
+
+        // The number of seconds we check for unread messages. Don't
+        // make this too small.
+        private const int tickCount = 60*1000;
 
         public MainWindow()
         {
             InitializeComponent();
-
-            string oauthToken = Properties.Settings.Default.oauthToken;
-            string oauthTokenSecret = Properties.Settings.Default.oauthTokenSecret;
-
-            if (string.IsNullOrWhiteSpace(oauthToken) || string.IsNullOrWhiteSpace(oauthTokenSecret))
-            {
-                CixLogin loginWindow = new CixLogin();
-                loginWindow.ShowDialog();
-            }
 
             ContextMenu notifyMenu = new ContextMenu();
 
@@ -45,95 +41,182 @@ namespace CIXNotifier
             _notifyIcon.Text = Properties.Resources.CIXNotifier;
             _notifyIcon.ContextMenu = notifyMenu;
 
-            Timer notifyTimer = new Timer {Interval = 60000};
-            notifyTimer.Tick += NotifyTimer_Tick;
-            notifyTimer.Start();
+            _notifyTimer = new Timer { Interval = tickCount };
+            _notifyTimer.Tick += NotifyTimer_Tick;
+            _notifyTimer.Start();
 
             CheckAndUpdate(true);
         }
 
+        /// <summary>
+        /// Has this app been authenticated? Do we have non-empty cached tokens.
+        /// </summary>
+        /// <returns>True if we're authenticated, false otherwise</returns>
+        private static bool IsAuthenticated()
+        {
+            string oauthToken = Properties.Settings.Default.oauthToken;
+            string oauthTokenSecret = Properties.Settings.Default.oauthTokenSecret;
+            return !string.IsNullOrWhiteSpace(oauthToken) && !string.IsNullOrWhiteSpace(oauthTokenSecret);
+        }
+
+        /// <summary>
+        /// Invoke the CIX Inbox page on the web.
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event arguments</param>
         private void OnViewMessagesMenu(Object sender, EventArgs e)
         {
             Process.Start("http://forums.cixonline.com/secure/inbox.aspx?pm=inbox");
         }
 
+        /// <summary>
+        /// Does an immediate check for unread messages. To avoid a race condition,
+        /// we also reset the timer here.
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event arguments</param>
         private void OnCheckNowMenu(Object sender, EventArgs e)
         {
             CheckAndUpdate(true);
         }
 
+        /// <summary>
+        /// Displays the About window.
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event arguments</param>
         private void OnAboutMenu(Object sender, EventArgs e)
         {
             AboutWindow aboutWindow = new AboutWindow();
             aboutWindow.Show();
         }
 
+        /// <summary>
+        /// Shuts down the notification application.
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event arguments</param>
         private void OnExitMenu(Object sender, EventArgs e)
         {
             System.Windows.Application.Current.Shutdown();
         }
 
+        /// <summary>
+        /// Timer tick handler. This is the bit that gets called on schedule to
+        /// poll and check for any change in unread messages.
+        /// </summary>
+        /// <param name="sender">Timer object</param>
+        /// <param name="e">Timer event arguments</param>
         private void NotifyTimer_Tick(Object sender, EventArgs e)
         {
             CheckAndUpdate(false);
         }
 
+        /// <summary>
+        /// Do a check for unread messages and then update the notification icon
+        /// and flag a notification alert if anything has changed.
+        /// </summary>
+        /// <param name="alwaysShow">If true, we always change state even if the
+        /// count of unread messages hasn't changed</param>
         private void CheckAndUpdate(bool alwaysShow)
         {
-            int newCount = CheckMessages();
-            if (newCount != _lastCount || alwaysShow)
+            _notifyTimer.Stop();
+
+            if (!IsAuthenticated())
             {
-                if (_messages.Count == 0)
+                CixLogin loginWindow = new CixLogin();
+                loginWindow.ShowDialog();
+            }
+
+            // Only bother progressing if we got authenticated. If not,
+            // kill the timer too so we don't get all these popups!
+            if (IsAuthenticated())
+            {
+                int newCount = CheckMessages();
+                if (newCount != _lastCount || alwaysShow)
                 {
-                    _notifyIcon.Icon = new Icon(GetType(), "Notify_NoUnread.ico");
+                    if (_messages.Count == 0)
+                    {
+                        _notifyIcon.Icon = new Icon(GetType(), "Notify_NoUnread.ico");
+                    }
+                    else
+                    {
+                        _notifyIcon.Icon = new Icon(GetType(), "Notify.ico");
+                        NotificationWindow notify = new NotificationWindow();
+                        notify.Update(_messages);
+                        notify.Show();
+                    }
+                    _lastCount = newCount;
                 }
-                else
-                {
-                    _notifyIcon.Icon = new Icon(GetType(), "Notify.ico");
-                    NotificationWindow notify = new NotificationWindow();
-                    notify.Update(_messages);
-                    notify.Show();
-                }
-                _lastCount = newCount;
+                _notifyTimer.Start();
+            }
+            else
+            {
+                _notifyIcon.Icon = new Icon(GetType(), "Notify_NoAuth.ico");
+                _lastCount = -1;
             }
         }
 
+        /// <summary>
+        /// This is the guts of the message check. We call the inbox API to get a list of all messages
+        /// and iterate through them to create our internal list of unread messages which are a little
+        /// easier to manage than the serialised XML objects.
+        /// </summary>
+        /// <returns>The count of unread messages in the inbox</returns>
         private int CheckMessages()
         {
             WebRequest wrGeturl = WebRequest.Create(CIXOAuth.Uri("http://api.cixonline.com/v1.0/cix.svc/personalmessage/inbox.xml"));
             wrGeturl.Method = "GET";
 
-            Stream objStream = wrGeturl.GetResponse().GetResponseStream();
-            if (objStream != null)
+            try
             {
-                using (XmlReader reader = XmlReader.Create(objStream))
+                Stream objStream = wrGeturl.GetResponse().GetResponseStream();
+                if (objStream != null)
                 {
-                    XmlSerializer serializer = new XmlSerializer(typeof (ConversationInboxSet));
-                    ConversationInboxSet inboxSet = (ConversationInboxSet)serializer.Deserialize(reader);
-
-                    _messages.Clear();
-
-                    foreach (CIXInboxItem conv in inboxSet.Conversations)
+                    using (XmlReader reader = XmlReader.Create(objStream))
                     {
-                        bool isUnread;
-                        if (Boolean.TryParse(conv.Unread, out isUnread) && isUnread)
+                        XmlSerializer serializer = new XmlSerializer(typeof (ConversationInboxSet));
+                        ConversationInboxSet inboxSet = (ConversationInboxSet) serializer.Deserialize(reader);
+
+                        _messages.Clear();
+
+                        foreach (CIXInboxItem conv in inboxSet.Conversations)
                         {
-                            InboxMessage newMessage = new InboxMessage
-                                {
-                                    Id = conv.ID,
-                                    Body = conv.Body,
-                                    Date = DateTime.Parse(conv.Date),
-                                    Sender = conv.Sender,
-                                    Subject = conv.Subject
-                                };
-                            _messages.Add(newMessage);
+                            bool isUnread;
+                            if (Boolean.TryParse(conv.Unread, out isUnread) && isUnread)
+                            {
+                                InboxMessage newMessage = new InboxMessage
+                                    {
+                                        Id = conv.ID,
+                                        Body = conv.Body,
+                                        Date = DateTime.Parse(conv.Date),
+                                        Sender = conv.Sender,
+                                        Subject = conv.Subject
+                                    };
+                                _messages.Add(newMessage);
+                            }
                         }
                     }
+                }
+            }
+            catch (WebException e)
+            {
+                if (e.Message.Contains("401"))
+                {
+                    // Authentication failed. Likely the app has been revoked. Clear
+                    // the tokens and force re-authentication.
+                    Properties.Settings.Default.oauthToken = "";
+                    Properties.Settings.Default.oauthTokenSecret = "";
                 }
             }
             return _messages.Count;
         }
 
+        /// <summary>
+        /// Internal method that controls disposing the notifyicon object
+        /// when the main class is disposed.
+        /// </summary>
+        /// <param name="disposing">Are we disposing or not?</param>
         private void Dispose(bool disposing)
         {
             if (!_isDisposed)
@@ -146,6 +229,9 @@ namespace CIXNotifier
             }
         }
 
+        /// <summary>
+        /// Calls Dispose to remove any lingering resources
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);

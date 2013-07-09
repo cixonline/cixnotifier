@@ -34,14 +34,14 @@ namespace CIXNotifier
         {
             if (messages.Count == 0)
             {
-                notifyText.Text = "Your inbox contains no unread conversations";
+                notifyText.Text = Properties.Resources.NoUnread;
             }
             else if (messages.Count > 1)
             {
                 Run titleRun = new Run
                     {
                         FontWeight = FontWeights.Bold,
-                        Text = string.Format("Your inbox contains {0} unread conversations", messages.Count.ToString(CultureInfo.InvariantCulture))
+                        Text = string.Format(Properties.Resources.MultiUnread, messages.Count.ToString(CultureInfo.InvariantCulture))
                     };
                 notifyText.Inlines.Add(titleRun);
             }

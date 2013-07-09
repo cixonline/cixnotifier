@@ -8,13 +8,19 @@
     [System.Xml.Serialization.XmlRootAttribute(Namespace = "http://cixonline.com", IsNullable = false)]
     public class ConversationInboxSet
     {
-        /// <remarks/>
+        /// <summary>
+        /// Total count of messages
+        /// </summary>
         public string Count { get; set; }
 
-        /// <remarks/>
+        /// <summary>
+        /// Index of the Start message.
+        /// </summary>
         public string Start { get; set; }
 
-        /// <remarks/>
+        /// <summary>
+        /// An array of CIXInboxItems that represent messages in the inbox.
+        /// </summary>
         [System.Xml.Serialization.XmlArrayItemAttribute("ConversationInbox", typeof (CIXInboxItem), IsNullable = false)]
         public CIXInboxItem[] Conversations { get; set; }
     }
@@ -26,25 +32,40 @@
     [System.Xml.Serialization.XmlTypeAttribute(AnonymousType = true, Namespace = "http://cixonline.com")]
     public class CIXInboxItem
     {
-        /// <remarks/>
+        /// <summary>
+        /// Body of the message
+        /// </summary>
         public string Body { get; set; }
 
-        /// <remarks/>
+        /// <summary>
+        /// Date of the message in ISO format.
+        /// </summary>
         public string Date { get; set; }
 
-        /// <remarks/>
+        /// <summary>
+        /// ID of the message.
+        /// </summary>
         public int ID { get; set; }
 
-        /// <remarks/>
+        /// <summary>
+        /// Actually, not quite sure what this is.
+        /// </summary>
         public string LastMsgBy { get; set; }
 
-        /// <remarks/>
+        /// <summary>
+        /// Nickname of the sender.
+        /// </summary>
         public string Sender { get; set; }
 
-        /// <remarks/>
+        /// <summary>
+        /// The message subject line.
+        /// </summary>
         public string Subject { get; set; }
 
-        /// <remarks/>
+        /// <summary>
+        /// true or false value which indicates whether or not
+        /// this message has been read.
+        /// </summary>
         public string Unread { get; set; }
     }
 }

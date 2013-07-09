@@ -106,6 +106,24 @@ namespace CIXNotifier.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Your inbox contains {0} unread conversations.
+        /// </summary>
+        internal static string MultiUnread {
+            get {
+                return ResourceManager.GetString("MultiUnread", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Your inbox contains no unread conversations.
+        /// </summary>
+        internal static string NoUnread {
+            get {
+                return ResourceManager.GetString("NoUnread", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to View Messages.
         /// </summary>
         internal static string ViewMessages {

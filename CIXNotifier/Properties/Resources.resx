@@ -135,4 +135,10 @@
   <data name="ViewMessages" xml:space="preserve">
     <value>View Messages</value>
   </data>
+  <data name="NoUnread" xml:space="preserve">
+    <value>Your inbox contains no unread conversations</value>
+  </data>
+  <data name="MultiUnread" xml:space="preserve">
+    <value>Your inbox contains {0} unread conversations</value>
+  </data>
 </root>

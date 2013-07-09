@@ -135,4 +135,10 @@
   <data name="ViewMessages" xml:space="preserve">
     <value>Consulter les Messages</value>
   </data>
+  <data name="NoUnread" xml:space="preserve">
+    <value>Votre boîte de réception ne contient aucune conversations non lues</value>
+  </data>
+  <data name="MultiUnread" xml:space="preserve">
+    <value>Votre boîte de réception contient {0} conversations non lues</value>
+  </data>
 </root>
