@@ -15,9 +15,9 @@ namespace CIXNotifier
             _messages.Add(newMessage);
         }
 
-        public bool Contains(int id)
+        public void Clear()
         {
-            return _messages.Any(message => message.Id == id);
+            _messages.Clear();
         }
 
         public int Count

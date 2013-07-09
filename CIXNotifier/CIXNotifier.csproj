@@ -82,6 +82,7 @@
       <DependentUpon>AboutWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="CIXOAuth.cs" />
+    <Compile Include="PMessage.Inbox.Get.cs" />
     <Compile Include="InboxMessage.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

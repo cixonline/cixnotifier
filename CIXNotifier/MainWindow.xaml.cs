@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Windows.Forms;
 using System.Xml;
+using System.Xml.Serialization;
 
 namespace CIXNotifier
 {
@@ -103,64 +104,29 @@ namespace CIXNotifier
             wrGeturl.Method = "GET";
 
             Stream objStream = wrGeturl.GetResponse().GetResponseStream();
-
             if (objStream != null)
             {
                 using (XmlReader reader = XmlReader.Create(objStream))
                 {
-                    while (reader.ReadToFollowing("ConversationInbox"))
+                    XmlSerializer serializer = new XmlSerializer(typeof (ConversationInboxSet));
+                    ConversationInboxSet inboxSet = (ConversationInboxSet)serializer.Deserialize(reader);
+
+                    _messages.Clear();
+
+                    foreach (CIXInboxItem conv in inboxSet.Conversations)
                     {
-                        InboxMessage newMessage = new InboxMessage();
-                        string element = string.Empty;
-                        bool isUnread = false;
-
-                        while (reader.Read())
+                        bool isUnread;
+                        if (Boolean.TryParse(conv.Unread, out isUnread) && isUnread)
                         {
-                            if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "ConversationInbox")
-                            {
-                                break;
-                            }
-                            if (reader.NodeType == XmlNodeType.Element)
-                            {
-                                element = reader.Name;
-                            }
-                            if (reader.NodeType == XmlNodeType.Text)
-                            {
-                                switch (element)
+                            InboxMessage newMessage = new InboxMessage
                                 {
-                                    case "Unread":
-                                        isUnread = Boolean.Parse(reader.Value);
-                                        break;
-
-                                    case "ID":
-                                        newMessage.Id = Int32.Parse(reader.Value);
-                                        break;
-
-                                    case "Sender":
-                                        newMessage.Sender = reader.Value;
-                                        break;
-
-                                    case "Subject":
-                                        newMessage.Subject = reader.Value;
-                                        break;
-
-                                    case "Date":
-                                        newMessage.Date = DateTime.Parse(reader.Value);
-                                        break;
-
-                                    case "Body":
-                                        newMessage.Body = reader.Value;
-                                        break;
-                                }
-                            }
-                        }
-
-                        if (isUnread)
-                        {
-                            if (!_messages.Contains(newMessage.Id))
-                            {
-                                _messages.Add(newMessage);
-                            }
+                                    Id = conv.ID,
+                                    Body = conv.Body,
+                                    Date = DateTime.Parse(conv.Date),
+                                    Sender = conv.Sender,
+                                    Subject = conv.Subject
+                                };
+                            _messages.Add(newMessage);
                         }
                     }
                 }

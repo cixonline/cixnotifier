@@ -48,7 +48,7 @@ namespace CIXNotifier
             else
             {
                 DateTime messageDate = new DateTime(messages[0].Date.Year, messages[0].Date.Month, messages[0].Date.Day);
-                string bodyText = messages[0].Body;
+                string bodyText = messages[0].Body.Trim();
 
                 Run dateRun = new Run
                     {
