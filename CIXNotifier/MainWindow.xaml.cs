@@ -124,6 +124,7 @@ namespace CIXNotifier
         /// <param name="e">Event arguments</param>
         private void OnExitMenu(Object sender, EventArgs e)
         {
+            _notifyIcon.Visible = false;
             System.Windows.Application.Current.Shutdown();
         }
 
