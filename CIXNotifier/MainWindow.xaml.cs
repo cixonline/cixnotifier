@@ -16,6 +16,7 @@ namespace CIXNotifier
     {
         readonly InboxMessages _messages = new InboxMessages();
         readonly NotifyIcon _notifyIcon = new NotifyIcon();
+        private NotificationWindow _notify;
         private readonly Timer _notifyTimer;
         int _lastCount = -1;
         private bool _isDisposed;
@@ -30,11 +31,17 @@ namespace CIXNotifier
 
             ContextMenu notifyMenu = new ContextMenu();
 
-            notifyMenu.MenuItems.Add(0, new MenuItem(Properties.Resources.ViewMessages, OnViewMessagesMenu));
+            MenuItem viewMessagesMenu = new MenuItem(Properties.Resources.ViewMessages, OnViewMessagesMenu)
+                {
+                    DefaultItem = true
+                };
+
+            notifyMenu.MenuItems.Add(0, viewMessagesMenu);
             notifyMenu.MenuItems.Add(1, new MenuItem(Properties.Resources.CheckNow, OnCheckNowMenu));
-            notifyMenu.MenuItems.Add(2, new MenuItem(Properties.Resources.About, OnAboutMenu));
-            notifyMenu.MenuItems.Add(3, new MenuItem("-"));
-            notifyMenu.MenuItems.Add(4, new MenuItem(Properties.Resources.Exit, OnExitMenu));
+            notifyMenu.MenuItems.Add(2, new MenuItem(Properties.Resources.TellMeAgain, OnTellMeAgain));
+            notifyMenu.MenuItems.Add(3, new MenuItem(Properties.Resources.About, OnAboutMenu));
+            notifyMenu.MenuItems.Add(4, new MenuItem("-"));
+            notifyMenu.MenuItems.Add(5, new MenuItem(Properties.Resources.Exit, OnExitMenu));
 
             _notifyIcon.Visible = true;
             _notifyIcon.Icon = new Icon(GetType(), "Notify_NoUnread.ico");
@@ -70,6 +77,21 @@ namespace CIXNotifier
         }
 
         /// <summary>
+        /// Display the last notification again.
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event arguments</param>
+        private void OnTellMeAgain(Object sender, EventArgs e)
+        {
+            if (_messages != null && _messages.Count > 0)
+            {
+                _notify = new NotificationWindow();
+                _notify.Update(_messages);
+                _notify.Show();
+            }
+        }
+
+        /// <summary>
         /// Does an immediate check for unread messages. To avoid a race condition,
         /// we also reset the timer here.
         /// </summary>
@@ -87,6 +109,10 @@ namespace CIXNotifier
         /// <param name="e">Event arguments</param>
         private void OnAboutMenu(Object sender, EventArgs e)
         {
+            if (_notify != null)
+            {
+                _notify.Clear();
+            }
             AboutWindow aboutWindow = new AboutWindow();
             aboutWindow.Show();
         }
@@ -142,9 +168,9 @@ namespace CIXNotifier
                     else
                     {
                         _notifyIcon.Icon = new Icon(GetType(), "Notify.ico");
-                        NotificationWindow notify = new NotificationWindow();
-                        notify.Update(_messages);
-                        notify.Show();
+                        _notify = new NotificationWindow();
+                        _notify.Update(_messages);
+                        _notify.Show();
                     }
                     _lastCount = newCount;
                 }
@@ -187,7 +213,6 @@ namespace CIXNotifier
                             {
                                 InboxMessage newMessage = new InboxMessage
                                     {
-                                        Id = conv.ID,
                                         Body = conv.Body,
                                         Date = DateTime.Parse(conv.Date),
                                         Sender = conv.Sender,

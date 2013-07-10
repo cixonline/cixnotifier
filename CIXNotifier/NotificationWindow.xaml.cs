@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Documents;
+using System.Windows.Media;
 using System.Windows.Threading;
 
 namespace CIXNotifier
@@ -12,10 +11,14 @@ namespace CIXNotifier
     /// </summary>
     public partial class NotificationWindow
     {
+        private InboxMessages _messages;
+        private int _index;
+
         public NotificationWindow()
         {
             InitializeComponent();
 
+            // This code basically shoves the window into the task bar area.
             Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
             {
                 var workingArea = System.Windows.Forms.Screen.PrimaryScreen.WorkingArea;
@@ -30,66 +33,110 @@ namespace CIXNotifier
             }));
         }
 
+        /// <summary>
+        /// Remove any notification window immediately. Don't wait for the transition
+        /// to complete.
+        /// </summary>
+        public void Clear()
+        {
+            Close();
+        }
+
+        /// <summary>
+        /// Update the notification window with the specified set of messages.
+        /// </summary>
+        /// <param name="messages"></param>
         public void Update(InboxMessages messages)
         {
             if (messages.Count == 0)
             {
-                notifyText.Text = Properties.Resources.NoUnread;
-            }
-            else if (messages.Count > 1)
-            {
-                Run titleRun = new Run
-                    {
-                        FontWeight = FontWeights.Bold,
-                        Text = string.Format(Properties.Resources.MultiUnread, messages.Count.ToString(CultureInfo.InvariantCulture))
-                    };
-                notifyText.Inlines.Add(titleRun);
+                notifyText1.Text = Properties.Resources.NoUnread;
             }
             else
             {
-                DateTime messageDate = new DateTime(messages[0].Date.Year, messages[0].Date.Month, messages[0].Date.Day);
-                string bodyText = messages[0].Body.Trim();
-
-                Run dateRun = new Run
-                    {
-                        Text =
-                            messageDate == DateTime.Today
-                                ? messages[0].Date.ToShortTimeString()
-                                : messages[0].Date.ToShortDateString()
-                    };
-                notifyText.Inlines.Add(dateRun);
-
-                Run titleRun = new Run
-                    {
-                        FontWeight = FontWeights.Bold,
-                        Text = " " + messages[0].Sender
-                    };
-                notifyText.Inlines.Add(titleRun);
-
-                notifyText.Inlines.Add(new LineBreak());
-
-                Run textRun = new Run
-                    {
-                        Text = messages[0].Subject
-                    };
-                notifyText.Inlines.Add(textRun);
-
-                notifyText.Inlines.Add(new LineBreak());
-
-                textRun = new Run
-                    {
-                        FontStyle = FontStyles.Italic,
-                        Text = bodyText.Substring(0, Math.Min(bodyText.Length, 80))
-                    };
-                notifyText.Inlines.Add(textRun);
+                _messages = messages;
+                _index = 0;
+                ShowNextMessage();
             }
         }
 
-        private void OnMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        /// <summary>
+        /// Show the next message in the array of messages passed to Update, wrapping round
+        /// if we went past the end.
+        /// </summary>
+        private void ShowNextMessage()
         {
-            Process.Start("http://forums.cixonline.com/secure/inbox.aspx?pm=inbox");
+            DateTime messageDate = new DateTime(_messages[_index].Date.Year, _messages[_index].Date.Month, _messages[_index].Date.Day);
+            string bodyText = _messages[_index].Body.Trim();
+
+            notifyText1.Inlines.Clear();
+            Run chevronRun = new Run
+                {
+                    Text = "»",
+                    Foreground = new SolidColorBrush(Colors.Red)
+                };
+            notifyText1.Inlines.Add(chevronRun);
+
+            Run countRun = new Run
+                {
+                    Text = string.Format("{0} of {1} - ", _index + 1, _messages.Count)
+                };
+            notifyText1.Inlines.Add(countRun);
+
+            Run dateRun = new Run
+                {
+                    Text =
+                        messageDate == DateTime.Today
+                            ? _messages[_index].Date.ToShortTimeString()
+                            : _messages[_index].Date.ToShortDateString()
+                };
+            notifyText1.Inlines.Add(dateRun);
+
+            Run titleRun = new Run
+                {
+                    FontWeight = FontWeights.Bold,
+                    Text = " " + _messages[_index].Sender
+                };
+            notifyText1.Inlines.Add(titleRun);
+
+            notifyText2.Inlines.Clear();
+            Run textRun = new Run
+                {
+                    FontWeight = FontWeights.Bold,
+                    Text = _messages[_index].Subject
+                };
+            notifyText2.Inlines.Add(textRun);
+
+            notifyText3.Inlines.Clear();
+            textRun = new Run
+                {
+                    FontStyle = FontStyles.Italic,
+                    Text = bodyText.Substring(0, Math.Min(bodyText.Length, 80))
+                };
+            notifyText3.Inlines.Add(textRun);
+
+            if (++_index == _messages.Count)
+            {
+                _index = 0;
+            }
         }
 
+        /// <summary>
+        /// Trap the mouse down event on the notification to show the next unread message
+        /// in the sequence.
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Mouse event arguments</param>
+        private void OnMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            ShowNextMessage();
+        }
+
+        /// <summary>
+        /// Called when the storyboard completes. We close the notification window.
+        /// </summary>
+        /// <param name="sender">Sender</param>
+        /// <param name="e">Event arguments</param>
         private void OnCompleted(object sender, EventArgs e)
         {
             Close();

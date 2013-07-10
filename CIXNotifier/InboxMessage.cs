@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 
 namespace CIXNotifier
 {
@@ -48,8 +47,6 @@ namespace CIXNotifier
 
     public class InboxMessage
     {
-        public int Id { get; set; }
-
         public string Sender { get; set; }
 
         public string Subject { get; set; }

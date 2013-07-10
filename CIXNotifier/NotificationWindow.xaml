@@ -5,17 +5,29 @@
   Title="Notification Popup" Width="300" SizeToContent="Height"
   WindowStyle="None" AllowsTransparency="True" Background="Transparent" ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize">
 
-    <Grid RenderTransformOrigin="0,1" >
+    <Grid x:Name="notifyGrid"  MouseDown="OnMouseDown" RenderTransformOrigin="0,1">
 
         <!-- Notification area -->
         <Border BorderThickness="1" Background="Beige" BorderBrush="Black" CornerRadius="10">
-            <TextBlock x:Name="notifyText" TextWrapping="Wrap" Margin="5,5,9,5" MouseDown="OnMouseDown"/>
+            <StackPanel>
+                <TextBlock x:Name="notifyText1" Margin="5,3,5,0" TextTrimming="WordEllipsis" TextWrapping="NoWrap" />
+                <TextBlock x:Name="notifyText2" Margin="5,0,5,0" TextTrimming="WordEllipsis" TextWrapping="NoWrap" />
+                <TextBlock x:Name="notifyText3" Margin="5,0,5,3" TextTrimming="WordEllipsis" TextWrapping="NoWrap" />
+            </StackPanel>
         </Border>
 
         <!-- Animation -->
         <Grid.Triggers>
+            <EventTrigger SourceName="notifyGrid" RoutedEvent="Grid.MouseEnter">
+                <PauseStoryboard BeginStoryboardName="notifyBeginStoryboard" />
+            </EventTrigger>
+
+            <EventTrigger SourceName="notifyGrid" RoutedEvent="Grid.MouseLeave">
+                <ResumeStoryboard BeginStoryboardName="notifyBeginStoryboard" />
+            </EventTrigger>
+
             <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                <BeginStoryboard>
+                <BeginStoryboard x:Name="notifyBeginStoryboard">
                     <Storyboard Completed="OnCompleted">
                         <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)">
                             <SplineDoubleKeyFrame KeyTime="0:0:0" Value="0"/>
